@@ -1311,13 +1311,16 @@ struct composable : aux::is<aux::pool, decltype(composable_impl<T>(0))> {};
 namespace front {
 struct operator_base {};
 struct action_base {};
+template <class TRootSM, class... TSubSMs>
+TRootSM get_root_sm_impl(aux::pool<TRootSM, TSubSMs...> *);
+template <class TSubs>
+get_root_sm_t = decltype(get_root_sm_impl((TSubs *)0));
 template <class TSM, class TDeps, class TSubs>
 struct sm_ref {
   template <class TEvent>
   auto process_event(const TEvent &event) {
-    return sm.process_event(event, deps, subs);
+    return aux::get<get_root_sm_t<TSubs>>(subs).process_event(event, deps, subs);
   }
-  TSM &sm;
   TDeps &deps;
   TSubs &subs;
 };
@@ -1658,8 +1661,8 @@ struct process {
    public:
     explicit process_impl(const TEvent &event) : event(event) {}
     template <class T, class TSM, class TDeps, class TSubs>
-    void operator()(const T &, TSM &sm, TDeps &deps, TSubs &subs) {
-      sm.process_event(event, deps, subs);
+    void operator()(const T &, TSM &, TDeps &deps, TSubs &subs) {
+      aux::get<get_root_sm_t<TSubs>>(subs).process_event(event, deps, subs);
     }
 
    private:
